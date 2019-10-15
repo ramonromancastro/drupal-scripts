@@ -9,8 +9,6 @@ $ git clone https://github.com/ramonromancastro/drupal-scripts.git
 
 ### drupal7.unused.php
 
-[![N|Solid](http://php.net/images/logos/php-power-white.gif)](http://www.php.net/)
-
 **drupal7.unused.php** es un script para eliminar los archivos "huérfanos" y/o en desuso de instalaciones de Drupal Core 7.x. Los archivos que este script revisa, identifica y elimina son:
 
   - Archivos de la tabla {file_managed} que no se encuentran en el sistema de archivos, tienen tamaño 0 o no son utilizados por Drupal Core.
