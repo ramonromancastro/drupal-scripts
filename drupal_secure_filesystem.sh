@@ -151,7 +151,7 @@ find ${drupal_path} -type d -exec chmod u=rwx,g=rx,o= '{}' \;
 check_error
 
 print_msg "info" "Changing permissions of all files to rw-r----- (except ./vendor/* files)"
-find ${drupal_path} -path "./vendor" -prune -o -type f -exec chmod u=rw,g=rw,o= '{}' \;
+find ${drupal_path} -path "./vendor" -prune -o -type f -exec chmod u=rw,g=r,o= '{}' \;
 check_error
 
 print_msg "info" "Removing others access to ./vendor files"
