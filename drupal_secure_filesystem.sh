@@ -32,8 +32,9 @@
 #  1.6	2018/05/07	Cambios menores.
 #  1.7	2019/04/23	Cambio de parámetros y valores por defecto.
 #  1.8	2019/10/15	Cambios estéticos y modificaciones en la detección de los directorios files. Detección de Drupal 8.
+#  1.9	2020/03/09	Cambios de permisos en settings.php y vendor/*.
 
-VERSION=1.8
+VERSION=1.9
 
 # Constants
 declare -A colors=( [debug]="\e[36m" [info]="\e[39m" [ok]="\e[32m" [warning]="\e[93m" [error]="\e[91m" )
@@ -149,8 +150,12 @@ print_msg "info" "Changing permissions of all directories to rwxr-x---"
 find ${drupal_path} -type d -exec chmod u=rwx,g=rx,o= '{}' \;
 check_error
 
-print_msg "info" "Changing permissions of all files to rw-r-----"
-find ${drupal_path} -type f -exec chmod u=rw,g=r,o= '{}' \;
+print_msg "info" "Changing permissions of all files to rw-r----- (except ./vendor/* files)"
+find ${drupal_path} -path "./vendor" -prune -o -type f -exec chmod u=rw,g=rw,o= '{}' \;
+check_error
+
+print_msg "info" "Removing others access to ./vendor files"
+find ${drupal_path} -type f -path "./vendor/*" -prune -exec chmod o= '{}' \;
 check_error
 
 print_msg "info" "Changing permissions of [files] directories in [sites] to rwxrwx---"
@@ -158,8 +163,8 @@ print_msg "info" "Changing permissions of [files] directories in [sites] to rwxr
 find ${drupal_path}/sites/*/ -maxdepth 1 -type d -name files -exec chmod ug=rwx,o= '{}' \;
 check_error
 
-print_msg "info" "Changing permissions of [settings.php] files in [sites] to rw-r-----"
-find ${drupal_path}/sites -type f -name settings.php -exec chmod u=rw,g=r,o= '{}' \;
+print_msg "info" "Changing permissions of [settings.php] files in [sites] to r--r-----"
+find ${drupal_path}/sites -type f -name settings.php -exec chmod u=r,g=r,o= '{}' \;
 check_error
 
 #print_msg "info" "Changing permissions of all files inside all [files] directories in sites to rw-rw----"
