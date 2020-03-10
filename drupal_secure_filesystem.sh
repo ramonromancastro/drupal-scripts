@@ -33,8 +33,9 @@
 #  1.7	2019/04/23	Cambio de parámetros y valores por defecto.
 #  1.8	2019/10/15	Cambios estéticos y modificaciones en la detección de los directorios files. Detección de Drupal 8.
 #  1.9	2020/03/09	Cambios de permisos en settings.php y vendor/*.
+#  1.10	2020/03/10	Arreglado problema con cambios de permisos en vendor/*.
 
-VERSION=1.9
+VERSION=1.10
 
 # Constants
 declare -A colors=( [debug]="\e[36m" [info]="\e[39m" [ok]="\e[32m" [warning]="\e[93m" [error]="\e[91m" )
@@ -150,12 +151,12 @@ print_msg "info" "Changing permissions of all directories to rwxr-x---"
 find ${drupal_path} -type d -exec chmod u=rwx,g=rx,o= '{}' \;
 check_error
 
-print_msg "info" "Changing permissions of all files to rw-r----- (except ./vendor/* files)"
-find ${drupal_path} -path "./vendor" -prune -o -type f -exec chmod u=rw,g=r,o= '{}' \;
+print_msg "info" "Changing permissions of all files to rw-r----- (except vendor/* files)"
+find ${drupal_path} -path "${drupal_path}/vendor" -prune -o -type f -exec chmod u=rw,g=rw,o= '{}' \;
 check_error
 
 print_msg "info" "Removing others access to ./vendor files"
-find ${drupal_path} -type f -path "./vendor/*" -prune -exec chmod o= '{}' \;
+find ${drupal_path} -type f -path "${drupal_path}/vendor/*" -prune -exec chmod o= '{}' \;
 check_error
 
 print_msg "info" "Changing permissions of [files] directories in [sites] to rwxrwx---"
