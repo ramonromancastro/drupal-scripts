@@ -19,9 +19,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-define('DRUPAL_ROOT', getcwd());
-
-define("RRC_VERSION","1.29");
+define("RRC_VERSION","1.31");
 
 # ---------------------------------------------------------------------------------------
 # FUNCIONES
@@ -57,8 +55,15 @@ function rrc_print_multisite(){
 	if (rrc_is_multisite()){
 		require DRUPAL_ROOT . "/sites/sites.php";
 		echo "Sites availables:\n\n";
-		foreach($sites as $key => $value){
-			echo "\t$key\n";
+		ksort($sites);
+		$keys = array_unique($sites);
+		sort($keys);
+		echo "  default\n";
+		foreach($keys as $key => $value){
+			echo "  $value\n";
+			foreach($sites as $skey => $svalue){
+				if ($svalue == $value){ echo "    - $skey\n"; }
+			}
 		}
 		echo "\n";
 	}
@@ -143,9 +148,9 @@ function rrc_verbose($text){
 
 function rrc_print_help(){
 	rrc_print_copyright();
-	echo "Usage: drupal7.delete.unused.php -H <HTTP_HOST> -s <SCRIPT_NAME> -d <DATE> -f -o -v -h\n\n";
+	echo "Usage: drupal7_unused.php -p <PATH> -H <HTTP_HOST> -s <SCRIPT_NAME> -d <DATE> -f -o -v -h\n\n";
+	echo "\t-p <PATH>        ... Ruta base de la instalación de Drupal (por defecto: ruta actual)\n";
 	echo "\t-H <HTTP_HOST>   ... Nombre del host en formato FQDN:(PORT) para simular una petición Web\n";
-	echo "\t                     \033[01;93mOBLIGATORIO en caso de Multi-site\033[0m\n";
 	echo "\t-s <SCRIPT_NAME> ... Ruta de acceso absoluta para simular una petición Web\n";
 	echo "\t                     \033[01;93mOBLIGATORIO en caso de Multi-site\033[0m\n";
 	echo "\t-d <DATE>        ... Fecha de despublicación. Formato: YYYY-MM-DD\n";
@@ -221,7 +226,6 @@ function rrc_deleteUnpublishedRecords(){
 							" AND nod.nid = fde.entity_id " .
 							" AND fim.field_imagen_fid = fm.fid " .
 							" AND fde.field_fecha_despublicacion_value <= '".$options['d']."'");
-
 		rrc_start_progress($result->rowCount());
 		foreach ($result as $delta => $record) {
 			rrc_print_progress();
@@ -337,11 +341,16 @@ $executionTime = $date->getTimestamp();
 
 $_SERVER['REMOTE_ADDR'] = '';
 $_SERVER['REQUEST_METHOD'] = 'GET';
+$_SERVER['HTTP_HOST'] = gethostname();
 
-$options = getopt("H:s:d:fovh");
+define('DRUPAL_ROOT', getcwd());
+
+$options = getopt("p:H:s:d:fovh");
 if (isset($options['h'])){
 	rrc_print_help();
 }
+
+if (!empty($options['p'])) chdir($options['p']);
 
 if (rrc_is_multisite() && (empty($options['H']) || empty($options['s']))){
 	echo "\033[01;93mMulti-site detectado!\033[0m\n";
