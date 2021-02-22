@@ -19,7 +19,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-define("RRC_VERSION","1.31");
+define("RRC_VERSION","1.32");
 
 # ---------------------------------------------------------------------------------------
 # FUNCIONES
@@ -343,8 +343,6 @@ $_SERVER['REMOTE_ADDR'] = '';
 $_SERVER['REQUEST_METHOD'] = 'GET';
 $_SERVER['HTTP_HOST'] = gethostname();
 
-define('DRUPAL_ROOT', getcwd());
-
 $options = getopt("p:H:s:d:fovh");
 if (isset($options['h'])){
 	rrc_print_help();
@@ -359,6 +357,8 @@ if (rrc_is_multisite() && (empty($options['H']) || empty($options['s']))){
 
 if (!empty($options['H'])) $_SERVER['HTTP_HOST'] = $options['H'];
 if (!empty($options['s'])) $_SERVER['SCRIPT_NAME'] = $options['s'];
+
+define('DRUPAL_ROOT', getcwd());
 
 # ---------------------------------------------------------------------------------------
 # Copia del archivo index.php de Drupal Core exceptuando la última línea
