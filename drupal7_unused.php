@@ -19,7 +19,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-define("RRC_VERSION","1.32");
+define("RRC_VERSION","1.33");
 
 # ---------------------------------------------------------------------------------------
 # FUNCIONES
@@ -349,6 +349,7 @@ if (isset($options['h'])){
 }
 
 if (!empty($options['p'])) chdir($options['p']);
+define('DRUPAL_ROOT', getcwd());
 
 if (rrc_is_multisite() && (empty($options['H']) || empty($options['s']))){
 	echo "\033[01;93mMulti-site detectado!\033[0m\n";
@@ -357,8 +358,6 @@ if (rrc_is_multisite() && (empty($options['H']) || empty($options['s']))){
 
 if (!empty($options['H'])) $_SERVER['HTTP_HOST'] = $options['H'];
 if (!empty($options['s'])) $_SERVER['SCRIPT_NAME'] = $options['s'];
-
-define('DRUPAL_ROOT', getcwd());
 
 # ---------------------------------------------------------------------------------------
 # Copia del archivo index.php de Drupal Core exceptuando la última línea
