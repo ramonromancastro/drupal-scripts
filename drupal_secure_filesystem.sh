@@ -36,7 +36,7 @@
 #  1.10	2020/03/10	Arreglado problema con cambios de permisos en vendor/*.
 #  1.11	2026/05/25	OPtimización de find
 
-VERSION=1.10
+VERSION=1.11
 
 # Constants
 declare -A colors=( [debug]="\e[36m" [info]="\e[39m" [ok]="\e[32m" [warning]="\e[93m" [error]="\e[91m" )
