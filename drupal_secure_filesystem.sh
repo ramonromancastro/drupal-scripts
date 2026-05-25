@@ -34,6 +34,7 @@
 #  1.8	2019/10/15	Cambios estéticos y modificaciones en la detección de los directorios files. Detección de Drupal 8.
 #  1.9	2020/03/09	Cambios de permisos en settings.php y vendor/*.
 #  1.10	2020/03/10	Arreglado problema con cambios de permisos en vendor/*.
+#  1.11	2026/05/25	OPtimización de find
 
 VERSION=1.10
 
@@ -148,39 +149,39 @@ chown -R ${drupal_user}:${httpd_group} ${drupal_path}
 check_error
 
 print_msg "info" "Changing permissions of all directories to rwxr-x---"
-find ${drupal_path} -type d -exec chmod u=rwx,g=rx,o= '{}' \;
+find ${drupal_path} -type d -exec chmod u=rwx,g=rx,o= '{}' +
 check_error
 
 print_msg "info" "Changing permissions of all files to rw-r----- (except vendor/* files)"
-find ${drupal_path} -path "${drupal_path}/vendor" -prune -o -type f -exec chmod u=rw,g=rw,o= '{}' \;
+find ${drupal_path} -path "${drupal_path}/vendor" -prune -o -type f -exec chmod u=rw,g=rw,o= '{}' +
 check_error
 
 print_msg "info" "Removing others access to ./vendor files"
-find ${drupal_path} -type f -path "${drupal_path}/vendor/*" -prune -exec chmod o= '{}' \;
+find ${drupal_path} -type f -path "${drupal_path}/vendor/*" -prune -exec chmod o= '{}' +
 check_error
 
 print_msg "info" "Changing permissions of [files] directories in [sites] to rwxrwx---"
-#find ${drupal_path}/sites -type d -name files -exec chmod ug=rwx,o= '{}' \;
-find ${drupal_path}/sites/*/ -maxdepth 1 -type d -name files -exec chmod ug=rwx,o= '{}' \;
+#find ${drupal_path}/sites -type d -name files -exec chmod ug=rwx,o= '{}' +
+find ${drupal_path}/sites/*/ -maxdepth 1 -type d -name files -exec chmod ug=rwx,o= '{}' +
 check_error
 
 print_msg "info" "Changing permissions of [settings.php] files in [sites] to r--r-----"
-find ${drupal_path}/sites -type f -name settings.php -exec chmod u=r,g=r,o= '{}' \;
+find ${drupal_path}/sites -type f -name settings.php -exec chmod u=r,g=r,o= '{}' +
 check_error
 
 #print_msg "info" "Changing permissions of all files inside all [files] directories in sites to rw-rw----"
 #print_msg "info" "Changing permissions of all directories inside all [files] directories in sites to rwxrwx---"
 for x in ${drupal_path}/sites/*/files; do
   print_msg "info" "Changing permissions of all directories in [${x/$drupal_path/}] to rwxrwx---"
-  find ${x} -type d -exec chmod ug=rwx,o= '{}' \;
+  find ${x} -type d -exec chmod ug=rwx,o= '{}' +
   check_error
   print_msg "info" "Changing permissions of all files in [${x/$drupal_path/}] to rw-rw----"
-  find ${x} -type f -exec chmod ug=rw,o= '{}' \;
+  find ${x} -type f -exec chmod ug=rw,o= '{}' +
   check_error
 done
 
 print_msg "info" "Changing permissions of [.htaccess] files to r--r-----"
-find ${drupal_path} -type f -name .htaccess -exec chmod u=rw,g=r,o= '{}' \;
+find ${drupal_path} -type f -name .htaccess -exec chmod u=rw,g=r,o= '{}' +
 check_error
 
 print_msg "info" "Changing SELinux context of all directories"
