@@ -34,9 +34,10 @@
 #  1.8	2019/10/15	Cambios estéticos y modificaciones en la detección de los directorios files. Detección de Drupal 8.
 #  1.9	2020/03/09	Cambios de permisos en settings.php y vendor/*.
 #  1.10	2020/03/10	Arreglado problema con cambios de permisos en vendor/*.
-#  1.11	2026/05/25	OPtimización de find
+#  1.11	2026/05/25	Optimización de find
+#  1.12	2026/05/25	Modificar permisos de files
 
-VERSION=1.11
+VERSION=1.12
 
 # Constants
 declare -A colors=( [debug]="\e[36m" [info]="\e[39m" [ok]="\e[32m" [warning]="\e[93m" [error]="\e[91m" )
@@ -159,6 +160,12 @@ check_error
 print_msg "info" "Removing others access to ./vendor files"
 find ${drupal_path} -type f -path "${drupal_path}/vendor/*" -prune -exec chmod o= '{}' +
 check_error
+
+for x in ${drupal_path}/sites/*/files; do
+  print_msg "info" "Changing ownership of [${x/$drupal_path/}] to ${httpd_group}:${httpd_group}"
+  chown -R ${httpd_group}:${httpd_group} ${x/$drupal_path/}
+  check_error
+done
 
 print_msg "info" "Changing permissions of [files] directories in [sites] to rwxrwx---"
 #find ${drupal_path}/sites -type d -name files -exec chmod ug=rwx,o= '{}' +
