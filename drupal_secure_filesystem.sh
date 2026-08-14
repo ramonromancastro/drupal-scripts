@@ -194,11 +194,11 @@ print_msg "info" "Changing SELinux context of all directories"
 restorecon -R ${drupal_path}
 check_error
 
-print_msg "info" "\n====================================================================="
-print_msg "info" "ATTENTION - SECURITY ACTION REQUIRED:"
-print_msg "info" "Ownership of the 'files' directory has been set to Apache HTTP group."
-print_msg "info" "To maintain server hardening, it is CRITICAL to block script execution"
-print_msg "info" "(PHP/CGI) in this path using an Apache configuration file (.conf)."
-print_msg "info" "=====================================================================\n"
+print_msg "warning" "\n====================================================================="
+print_msg "warning" "ATTENTION - SECURITY ACTION REQUIRED:"
+print_msg "warning" "Ownership of the 'files' directory has been set to Apache HTTP group."
+print_msg "warning" "To maintain server hardening, it is CRITICAL to block script execution"
+print_msg "warning" "(PHP/CGI) in this path using an Apache configuration file (.conf)."
+print_msg "warning" "=====================================================================\n"
 
 print_msg "info" "\nDone setting proper permissions on files and directories\n"
