@@ -154,7 +154,7 @@ find ${drupal_path} -type d -exec chmod u=rwx,g=rx,o= '{}' +
 check_error
 
 print_msg "info" "Changing permissions of all files to rw-r----- (except vendor/* files)"
-find ${drupal_path} -path "${drupal_path}/vendor" -prune -o -type f -exec chmod u=rw,g=rw,o= '{}' +
+find ${drupal_path} -path "${drupal_path}/vendor" -prune -o -type f -exec chmod u=rw,g=r,o= '{}' +
 check_error
 
 print_msg "info" "Removing others access to ./vendor files"
@@ -167,17 +167,16 @@ for x in ${drupal_path}/sites/*/files; do
   check_error
 done
 
-print_msg "info" "Changing permissions of [files] directories in [sites] to rwxrwx---"
-#find ${drupal_path}/sites -type d -name files -exec chmod ug=rwx,o= '{}' +
-find ${drupal_path}/sites/*/ -maxdepth 1 -type d -name files -exec chmod ug=rwx,o= '{}' +
-check_error
+# print_msg "info" "Changing permissions of [files] directories in [sites] to rwxrwx---"
+# find ${drupal_path}/sites/*/ -maxdepth 1 -type d -name files -exec chmod ug=rwx,o= '{}' +
+# check_error
 
 print_msg "info" "Changing permissions of [settings.php] files in [sites] to r--r-----"
 find ${drupal_path}/sites -type f -name settings.php -exec chmod u=r,g=r,o= '{}' +
 check_error
 
-#print_msg "info" "Changing permissions of all files inside all [files] directories in sites to rw-rw----"
-#print_msg "info" "Changing permissions of all directories inside all [files] directories in sites to rwxrwx---"
+# print_msg "info" "Changing permissions of all files inside all [files] directories in sites to rw-rw----"
+# print_msg "info" "Changing permissions of all directories inside all [files] directories in sites to rwxrwx---"
 for x in ${drupal_path}/sites/*/files; do
   print_msg "info" "Changing permissions of all directories in [${x/$drupal_path/}] to rwxr-x---"
   find ${x} -type d -exec chmod u=rwx,g=rx,o= '{}' +
