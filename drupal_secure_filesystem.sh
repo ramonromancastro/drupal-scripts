@@ -35,7 +35,7 @@
 #  1.9	2020/03/09	Cambios de permisos en settings.php y vendor/*.
 #  1.10	2020/03/10	Arreglado problema con cambios de permisos en vendor/*.
 #  1.11	2026/05/25	Optimización de find
-#  1.12	2026/05/25	Modificar permisos de files
+#  1.12	2026/08/14	Modificar permisos de files
 
 VERSION=1.12
 
@@ -163,7 +163,7 @@ check_error
 
 for x in ${drupal_path}/sites/*/files; do
   print_msg "info" "Changing ownership of [${x/$drupal_path/}] to ${httpd_group}:${httpd_group}"
-  chown -R ${httpd_group}:${httpd_group} ${x/$drupal_path/}
+  chown -R ${httpd_group}:${httpd_group} "$x"
   check_error
 done
 
@@ -179,11 +179,11 @@ check_error
 #print_msg "info" "Changing permissions of all files inside all [files] directories in sites to rw-rw----"
 #print_msg "info" "Changing permissions of all directories inside all [files] directories in sites to rwxrwx---"
 for x in ${drupal_path}/sites/*/files; do
-  print_msg "info" "Changing permissions of all directories in [${x/$drupal_path/}] to rwxrwx---"
-  find ${x} -type d -exec chmod ug=rwx,o= '{}' +
+  print_msg "info" "Changing permissions of all directories in [${x/$drupal_path/}] to rwxr-x---"
+  find ${x} -type d -exec chmod u=rwx,g=rx,o= '{}' +
   check_error
-  print_msg "info" "Changing permissions of all files in [${x/$drupal_path/}] to rw-rw----"
-  find ${x} -type f -exec chmod ug=rw,o= '{}' +
+  print_msg "info" "Changing permissions of all files in [${x/$drupal_path/}] to rw-r-----"
+  find ${x} -type f -exec chmod u=rw,g=r,o= '{}' +
   check_error
 done
 
