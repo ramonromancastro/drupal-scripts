@@ -36,12 +36,12 @@
 #  1.10	2020/03/10	Arreglado problema con cambios de permisos en vendor/*.
 #  1.11	2026/05/25	Optimización de find
 #  1.12	2026/08/14	Modificar permisos de files
+#  1.13	2026/11/19	Refactorización y soporte para Drupal 9+
 
-VERSION=1.12
+VERSION=1.13
 
 # Constants
 declare -A colors=( [debug]="\e[36m" [info]="\e[39m" [ok]="\e[32m" [warning]="\e[93m" [error]="\e[91m" )
-
 
 # Functions
 check_error() {
@@ -86,21 +86,22 @@ if [ $(id -u) != 0 ]; then
   exit 1
 fi
 
-drupal_path=$(pwd)
-drupal_user=apache
-httpd_group=apache
+DRUPAL_PATH=$(pwd)
+DRUPAL_WEBROOT=$(pwd)
+USER=
+GROUP=
 
 # Parse Command Line Arguments
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --path=*)
-        drupal_path="${1#*=}"
+        DRUPAL_PATH="${1#*=}"
         ;;
     --user=*)
-        drupal_user="${1#*=}"
+        USER="${1#*=}"
         ;;
     --group=*)
-        httpd_group="${1#*=}"
+        GROUP="${1#*=}"
         ;;
     --help) print_help;;
     *)
@@ -110,28 +111,26 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
-# if [ -z "${drupal_path}" ] || [ ! -d "${drupal_path}/sites" ] || [ ! -f "${drupal_path}/core/modules/system/system.module" ] && [ ! -f "${drupal_path}/modules/system/system.module" ]; then
-  # print_msg "warning" "Please provide a valid Drupal path.\n"
-  # print_help
-  # exit 1
-# fi
-
-if [ -z "${drupal_user}" ] || [[ $(id -un "${drupal_user}" 2> /dev/null) != "${drupal_user}" ]]; then
+if [ -z "${USER}" ] || [[ $(id -un "${USER}" 2> /dev/null) != "${USER}" ]]; then
   print_msg "warning" "Please provide a valid user.\n"
   print_help
   exit 1
 fi
 
-if [ ! $(getent group "${httpd_group}") ]; then
+if [ ! $(getent group "${GROUP}") ]; then
   print_msg "warning" "Please provide a valid group.\n"
   print_help
   exit 1
 fi
 
-detected=$(grep -oP "^\s*define\('VERSION',\s*'\K.+?(?=\.)" "${drupal_path}/includes/bootstrap.inc" 2> /dev/null)
+if [ -d "${DRUPAL_PATH}/web" ]; then
+    DRUPAL_WEBROOT="${DRUPAL_PATH}/web"
+fi
+
+detected=$(grep -oP "^\s*define\('VERSION',\s*'\K.+?(?=\.)" "${DRUPAL_WEBROOT}/includes/bootstrap.inc" 2> /dev/null)
 detected=${detected:-N/A}
 if [ "${detected}" == "N/A" ]; then
-	detected=$(grep -oP "^\s*const VERSION\s*=\s*'\K.+?(?=\.)" "${drupal_path}/core/lib/Drupal.php" 2> /dev/null)
+	detected=$(grep -oP "^\s*const VERSION\s*=\s*'\K.+?(?=\.)" "${DRUPAL_WEBROOT}/core/lib/Drupal.php" 2> /dev/null)
 	detected=${detected:-N/A}
 fi
 if [ "${detected}" == "N/A" ]; then
@@ -140,65 +139,126 @@ if [ "${detected}" == "N/A" ]; then
 fi
 
 print_msg "debug" "Drupal major version detected: ${detected}\n"
-if [ "${detected}" != "7" ] && [ "${detected}" != "8" ]; then
+if [[ ! "$detected" =~ ^(7|8|9|10|11)$ ]]; then
 	print_msg "warning" "Drupal major version ${detected} not supported by this script.\n"
 	exit 1
 fi
 
-print_msg "info" "Changing ownership of all contents to ${drupal_user}:${httpd_group}"
-chown -R ${drupal_user}:${httpd_group} ${drupal_path}
+# Normalize optional glob results and avoid literal unmatched patterns.
+shopt -s nullglob
+FILES_DIRS=("$DRUPAL_WEBROOT"/sites/*/files)
+SETTINGS_FILES=("$DRUPAL_WEBROOT"/sites/*/settings*.php)
+SETTINGS_YML_FILES=("$DRUPAL_WEBROOT"/sites/*/settings*.yml)
+HTACCESS_FILES=()
+while IFS= read -r -d '' f; do HTACCESS_FILES+=("$f"); done < <(find "$DRUPAL_WEBROOT" -type f -iname .htaccess -print0)
+
+#
+# Ownership: assign non-root owner and web server group
+#
+
+print_msg "info" "Changing ownership of all contents to ${USER}:${GROUP}"
+find "$DRUPAL_PATH" \( ! -user "$USER" -o ! -group "$GROUP" \) -exec chown "$USER:$GROUP" -- '{}' +
 check_error
 
-print_msg "info" "Changing permissions of all directories to rwxr-x---"
-find ${drupal_path} -type d -exec chmod u=rwx,g=rx,o= '{}' +
+#
+# Base permissions: Strict principle of least privilege across the entire tree
+#
+
+print_msg "info" "Stripping SUID/SGID bits across the entire tree"
+find "${DRUPAL_PATH}" \( -perm -4000 -o -perm -2000 \) -exec chmod u-s,g-s -- '{}' +
 check_error
 
-print_msg "info" "Changing permissions of all files to rw-r----- (except vendor/* files)"
-find ${drupal_path} -path "${drupal_path}/vendor" -prune -o -type f -exec chmod u=rw,g=r,o= '{}' +
+print_msg "info" "Setting baseline permissions (0750 dirs)"
+find "${DRUPAL_PATH}" -type d ! -perm 0750 -exec chmod 0750 -- '{}' +
+check_error
+print_msg "info" "Setting baseline permissions (0640 files)"
+find "${DRUPAL_PATH}" -type f ! -perm 0640 -exec chmod 0640 -- '{}' +
 check_error
 
-print_msg "info" "Removing others access to ./vendor files"
-find ${drupal_path} -type f -path "${drupal_path}/vendor/*" -prune -exec chmod o= '{}' +
+#
+# vendor/bin permissions
+#
+
+print_msg "info" "Setting ${DRUPAL_PATH}/vendor/bin files (0700 files)"
+find "${DRUPAL_PATH}/vendor/bin" -type f ! -perm 0700 -exec chmod 0700 -- '{}' +
 check_error
 
-for x in ${drupal_path}/sites/*/files; do
-  print_msg "info" "Changing ownership of [${x/$drupal_path/}] to ${httpd_group}:${httpd_group}"
-  chown -R ${httpd_group}:${httpd_group} "$x"
-  check_error
+#
+# files permissions
+#
+
+for DIR in "${FILES_DIRS[@]}"; do
+    [[ -d "$DIR" ]] || continue
+    print_msg "info" "Setting ${DIR} permissions (2770 dirs)"
+    find "$DIR" -type d ! -perm 2770 -exec chmod 2770 -- {} +
+    check_error
+    print_msg "info" "Setting ${DIR} permissions (0660 files)"
+    find "$DIR" -type f ! -perm 0660 -exec chmod 0660 -- {} +
+    check_error
 done
 
-# print_msg "info" "Changing permissions of [files] directories in [sites] to rwxrwx---"
-# find ${drupal_path}/sites/*/ -maxdepth 1 -type d -name files -exec chmod ug=rwx,o= '{}' +
-# check_error
+#
+# Settings and .htaccess permissions
+#
 
-print_msg "info" "Changing permissions of [settings.php] files in [sites] to r--r-----"
-find ${drupal_path}/sites -type f -name settings.php -exec chmod u=r,g=r,o= '{}' +
-check_error
-
-# print_msg "info" "Changing permissions of all files inside all [files] directories in sites to rw-rw----"
-# print_msg "info" "Changing permissions of all directories inside all [files] directories in sites to rwxrwx---"
-for x in ${drupal_path}/sites/*/files; do
-  print_msg "info" "Changing permissions of all directories in [${x/$drupal_path/}] to rwxr-x---"
-  find ${x} -type d -exec chmod u=rwx,g=rx,o= '{}' +
-  check_error
-  print_msg "info" "Changing permissions of all files in [${x/$drupal_path/}] to rw-r-----"
-  find ${x} -type f -exec chmod u=rw,g=r,o= '{}' +
-  check_error
+for f in "${SETTINGS_FILES[@]}"; do
+    if [[ -f "$f" ]]; then
+        print_msg "info" "Setting ${f} permissions (0440 files)"
+        chmod 0440 -- "$f"
+        check_error
+    fi
 done
 
-print_msg "info" "Changing permissions of [.htaccess] files to r--r-----"
-find ${drupal_path} -type f -name .htaccess -exec chmod u=rw,g=r,o= '{}' +
-check_error
+for f in "${SETTINGS_YML_FILES[@]}"; do
+    if [[ -f "$f" ]]; then
+        print_msg "info" "Setting ${f} permissions (0440 files)"
+        chmod 0440 -- "$f"
+        check_error
+    fi
+done
 
-print_msg "info" "Changing SELinux context of all directories"
-restorecon -R ${drupal_path}
-check_error
+for f in "${HTACCESS_FILES[@]}"; do
+    if [[ -f "$f" ]]; then
+        print_msg "info" "Setting ${f} permissions (0440 files)"
+        chmod 0440 -- "$f"
+        check_error
+    fi
+  chmod 0440 -- "$f"
+done
+
+#
+# SELinux
+#
+
+if command -v getenforce >/dev/null 2>&1 && [[ $(getenforce) != Disabled ]]; then
+    if command -v semanage >/dev/null 2>&1 && command -v restorecon >/dev/null 2>&1; then
+        for dir in "${FILES_DIRS[@]}"; do
+            [[ -d "$dir" ]] || continue
+            rule="$dir(/.*)?"
+            if ! semanage fcontext -l | grep -F -- "$rule" >/dev/null 2>&1; then
+                print_msg "info" "Setting ${dir} SELinux fcontext (httpd_sys_rw_content_t)"
+                semanage fcontext -a -t httpd_sys_rw_content_t "$rule"
+                check_error
+            fi
+            print_msg "info" "Restoring ${dir} SELinux fcontext"
+            restorecon -R -- "$dir"
+            check_error
+        done
+    elif command -v chcon >/dev/null 2>&1; then
+        for dir in "${FILES_DIRS[@]}"; do
+            [[ -d "$dir" ]] || continue
+            print_msg "info" "Setting ${dir} SELinux context (httpd_sys_rw_content_t)"
+            chcon -R -t httpd_sys_rw_content_t "$dir"
+            check_error
+        done
+    else
+        print_msg warning 'SELinux is enabled but semanage/restorecon/chcon is unavailable; no labels changed.\n'
+    fi
+fi
 
 print_msg "warning" "\n=====================================================================\n"
 print_msg "warning" "ATTENTION - SECURITY ACTION REQUIRED:\n"
-print_msg "warning" "Ownership of the 'files' directory has been set to Apache HTTP group.\n"
-print_msg "warning" "To maintain server hardening, it is CRITICAL to block script execution\n"
-print_msg "warning" "(PHP/CGI) in this path using an Apache configuration file (.conf).\n"
+print_msg "warning" "Ensure PHP/CGI execution is disabled in every writable files directory.\n"
 print_msg "warning" "=====================================================================\n"
 
-print_msg "info" "\nDone setting proper permissions on files and directories\n"
+print_msg "ok" "\nDone setting proper permissions on files and directories\n"
